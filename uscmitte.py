@@ -28,6 +28,14 @@ async def run(playwright: Playwright):
     await page.get_by_placeholder("Password *").type(password, delay=250)
     await page.get_by_role("insertion").click()
     await page.get_by_role("button", name="Login").click()
+    try:     
+        page.get_by_role("button", name="Schließen").click()
+    except:
+        pass
+    try:     
+        page.get_by_role("button", name="close").click()
+    except:
+        pass
     # courses 
     #await page.get_by_text("Free Trainings", exact=True).click()
     print("courses")

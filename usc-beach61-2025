@@ -1,0 +1,94 @@
+import time
+from datetime import datetime, timedelta
+from playwright.async_api import async_playwright, Playwright
+import asyncio
+
+# Zugangsdaten
+email = ""
+password = "" 
+
+# Ziel-Datum berechnen (13 Tage in der Zukunft)
+today = datetime.now()
+target_date = today + timedelta(days=13)
+formatted_date = target_date.strftime('%Y-%m-%d')  # Format: yyyy-mm-dd
+venue_url = f"https://urbansportsclub.com/en/venues/community-sports-beach61-east61?date={formatted_date}"
+
+async def run(playwright: Playwright):
+    print("🔄 Starting browser...")
+    browser = await playwright.firefox.launch(headless=False)
+    page = await browser.new_page()
+
+    print(f"🌐 Opening Urban Sports page with date {formatted_date}...")
+    await page.goto(venue_url)
+
+    print("✅ Accepting cookies...")
+    await page.get_by_role("button", name="Accept all cookies").click()
+
+    print("🔐 Clicking login...")
+    await page.get_by_role("link", name="Log in").click()
+
+    print("⏳ Waiting 3 seconds before entering email...")
+    await asyncio.sleep(3)
+
+    print("📧 Entering email...")
+    await page.get_by_placeholder("Email *").type(email, delay=200)
+    await page.get_by_placeholder("Email *").press("Tab")
+
+    print("🔑 Entering password...")
+    await page.get_by_placeholder("Password *").type(password, delay=250)
+
+    print("➡️ Clicking login button...")
+    await page.get_by_role("button", name="Login").click()
+    await asyncio.sleep(3)
+
+    print("🧹 Closing potential popups (timeout max. 10 seconds)...")
+    popup_buttons = ["Schließen", "close", "Close"]
+    for label in popup_buttons:
+        try:
+            print(f"⏳ Waiting for popup button '{label}'...")
+            await page.get_by_role("button", name=label).wait_for(state="visible", timeout=10000)
+            await page.get_by_role("button", name=label).click()
+            print(f"✅ Button '{label}' was clicked.")
+        except Exception as e:
+            print(f"⚠️ No visible button '{label}' found or error: {e}")
+
+    print("📂 Clicking on 'Courses'...")
+    await page.get_by_label("Courses").click()
+
+    print("🎯 Clicking desired course: Beachvolleyball...")
+    await page.get_by_role("link", name="Continue").click()
+
+    print("🔍 Searching for 'Instant book' button...")
+    try:
+        await page.wait_for_selector('button:has-text("Instant book")', state='visible', timeout=5000)
+        print("✅ 'Instant book' button found. Booking course...")
+        await page.click('button:has-text("Instant book")')
+        await asyncio.sleep(10)
+    except:
+        print("❌ 'Instant book' button not found.")
+
+    print("🔎 Checking if 'Cancel booking' is available...")
+    try:
+        await page.wait_for_selector('button:has-text("Cancel booking")', state='visible', timeout=5000)
+        print("✅ 'Cancel booking' button found.")
+        await page.hover('button:has-text("Cancel booking")')
+        await asyncio.sleep(10)
+    except:
+        print("❌ 'Cancel booking' button not available.")
+
+    print("✅ Booking process complete.")
+    await asyncio.sleep(5)
+    await browser.close()
+
+async def main():
+    while True:
+        try:
+            print("=== Starting new booking attempt ===")
+            async with async_playwright() as playwright:
+                await run(playwright)
+            print("=== Process completed successfully ===")
+            break
+        except Exception as e:
+            print(f"❌ Error during booking process: {e}. Restarting...")
+
+asyncio.run(main())
